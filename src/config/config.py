@@ -1,0 +1,5 @@
+# Hyperparameters
+BATCH_SIZE = 32
+HIDDEN_DIM = 128
+TOTAL_LAYERS = 16
+STEPS = 50
