@@ -51,3 +51,16 @@ for step in range(STEPS):
 duration = time.time() - start_time
 print(f"Final Loss: {loss.item():.6f} Time: {duration:.3f}s")
 
+# First Training Output (in case you dont have a GPU to compare)
+# --- Training MLP (Ground Truth) ---
+# Step 0 | Loss: 0.6988
+# Step 5 | Loss: 0.6839
+# Step 10 | Loss: 0.6753
+# Step 15 | Loss: 0.6696
+# Step 20 | Loss: 0.5181
+# Step 25 | Loss: 0.3544
+# Step 30 | Loss: 0.2974
+# Step 35 | Loss: 0.2742
+# Step 40 | Loss: 0.2586
+# Step 45 | Loss: 0.2436
+# Final Loss: 0.231414 Time: 1.887s
