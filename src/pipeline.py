@@ -3,10 +3,11 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from config.config import (
-    BATCH_SIZE,
-    HIDDEN_DIM,
-    TOTAL_LAYERS,
-    STEPS
+    PIPELINE_BATCH_SIZE,
+    PIPELINE_HIDDEN_DIM,
+    PIPELINE_TOTAL_LAYERS,
+    PIPELINE_STEPS,
+    RANDOM_SEED
 )
 
 class FirstPipelineStage(nn.Module):
@@ -38,19 +39,18 @@ class SecondPipelineStage(nn.Module):
         return self.loss_fn(logits, targets)
     
 # Setup
-torch.manual_seed(42)
+torch.manual_seed(RANDOM_SEED)
 
 cuda = False
 if torch.cuda.is_available() and torch.device_count() >= 2:
     cuda = True
 
 if cuda:
-    model_part1 = FirstPipelineStage(HIDDEN_DIM, TOTAL_LAYERS).to(torch.cuda.device(0))
-    model_part2 = SecondPipelineStage(HIDDEN_DIM, TOTAL_LAYERS).to(torch.cuda.device(1))
+    model_part1 = FirstPipelineStage(PIPELINE_HIDDEN_DIM, PIPELINE_TOTAL_LAYERS).to(torch.cuda.device(0))
+    model_part2 = SecondPipelineStage(PIPELINE_HIDDEN_DIM, PIPELINE_TOTAL_LAYERS).to(torch.cuda.device(1))
 else:
-    model_part1 = FirstPipelineStage(HIDDEN_DIM, TOTAL_LAYERS)
-    model_part2 = SecondPipelineStage(HIDDEN_DIM, TOTAL_LAYERS)
-
+    model_part1 = FirstPipelineStage(PIPELINE_HIDDEN_DIM, PIPELINE_TOTAL_LAYERS)
+    model_part2 = SecondPipelineStage(PIPELINE_HIDDEN_DIM, PIPELINE_TOTAL_LAYERS)
 # IMPORTANT: The optimizer must track parameters from BOTH parts
 optimizer = optim.Adam(
     list(model_part1.parameters()) + list(model_part2.parameters()), 
@@ -59,17 +59,17 @@ optimizer = optim.Adam(
 
 # Generate one fixed batch to overfit
 if cuda:
-    fixed_input = torch.randn(BATCH_SIZE, HIDDEN_DIM).to(torch.cuda.device(0))
-    fixed_target = torch.randint(0, 2, (BATCH_SIZE,)).to(torch.cuda.device(1))
+    fixed_input = torch.randn(PIPELINE_BATCH_SIZE, PIPELINE_HIDDEN_DIM).to(torch.cuda.device(0))
+    fixed_target = torch.randint(0, 2, (PIPELINE_BATCH_SIZE,)).to(torch.cuda.device(1))
 else:
-    fixed_input = torch.randn(BATCH_SIZE, HIDDEN_DIM)
-    fixed_target = torch.randint(0, 2, (BATCH_SIZE,))
+    fixed_input = torch.randn(PIPELINE_BATCH_SIZE, PIPELINE_HIDDEN_DIM)
+    fixed_target = torch.randint(0, 2, (PIPELINE_BATCH_SIZE,))
 
 print('--- Training MLP (Simulated Pipeline) ---')
 start_time = time.time()
 model_part1.train()
 model_part2.train()
-for step in range(STEPS):
+for step in range(PIPELINE_STEPS):
     optimizer.zero_grad()
     # Simple forward and backward
     hidden = model_part1(fixed_input)
@@ -86,7 +86,6 @@ for step in range(STEPS):
     optimizer.step()
     if step == 0:  # Check once
         print(hidden.requires_grad, hidden.grad is not None, hidden.grad)
-    optimizer.step()
     if step % 5 == 0:
         print(f"Step {step:02d} | Loss: {loss.item():.6f}")
 

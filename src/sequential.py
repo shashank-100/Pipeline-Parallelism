@@ -3,10 +3,11 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from config.config import (
-    BATCH_SIZE,
-    HIDDEN_DIM,
-    TOTAL_LAYERS,
-    STEPS
+    SEQUENTIAL_BATCH_SIZE,
+    SEQUENTIAL_HIDDEN_DIM,
+    SEQUENTIAL_TOTAL_LAYERS,
+    SEQUENTIAL_STEPS,
+    RANDOM_SEED
 )
 
 # Multi Layer Perceptron
@@ -27,19 +28,19 @@ class MultiLayerPerceptron(nn.Module):
         return self.loss_fn(logits, targets)
     
 # Setup
-torch.manual_seed(42)
+torch.manual_seed(RANDOM_SEED)
 
-model = MultiLayerPerceptron(HIDDEN_DIM, TOTAL_LAYERS)
+model = MultiLayerPerceptron(SEQUENTIAL_HIDDEN_DIM, SEQUENTIAL_TOTAL_LAYERS)
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 # Generate one fixed batch to overfit
-fixed_input = torch.randn(BATCH_SIZE, HIDDEN_DIM)
-fixed_target = torch.randint(0, 2, (BATCH_SIZE,)) # low -> inclusive, high -> exclusive
+fixed_input = torch.randn(SEQUENTIAL_BATCH_SIZE, SEQUENTIAL_HIDDEN_DIM)
+fixed_target = torch.randint(0, 2, (SEQUENTIAL_BATCH_SIZE,)) # low -> inclusive, high -> exclusive
 
 print('--- Training MLP (Ground Truth) ---')
 start_time = time.time()
 model.train()
-for step in range(STEPS):
+for step in range(SEQUENTIAL_STEPS):
     optimizer.zero_grad()
     # Simple forward and backward
     loss = model(fixed_input, fixed_target)
