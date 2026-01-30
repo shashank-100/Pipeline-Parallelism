@@ -42,15 +42,30 @@ class SecondPipelineStage(nn.Module):
 torch.manual_seed(RANDOM_SEED)
 
 cuda = False
-if torch.cuda.is_available() and torch.device_count() >= 2:
+if torch.cuda.is_available() and torch.cuda.device_count() >= 2:
     cuda = True
 
+# passed a torch.device object into .to(). The overload expects either:
+# a string ("cuda:0"),
+# a torch.device directly (device=torch.device("cuda:0")),
+# or a dtype / tensor / layout.
+# gave torch.cuda.device(0), which is a context manager, not a device.
+# Fix: replace .to(torch.cuda.device(0)) with one of the valid device specs.
+
+# if cuda:
+#     model_part1 = FirstPipelineStage(PIPELINE_HIDDEN_DIM, PIPELINE_TOTAL_LAYERS).to(torch.cuda.device(0))
+#     model_part2 = SecondPipelineStage(PIPELINE_HIDDEN_DIM, PIPELINE_TOTAL_LAYERS).to(torch.cuda.device(1))
+# else:
+#     model_part1 = FirstPipelineStage(PIPELINE_HIDDEN_DIM, PIPELINE_TOTAL_LAYERS)
+#     model_part2 = SecondPipelineStage(PIPELINE_HIDDEN_DIM, PIPELINE_TOTAL_LAYERS)
+
 if cuda:
-    model_part1 = FirstPipelineStage(PIPELINE_HIDDEN_DIM, PIPELINE_TOTAL_LAYERS).to(torch.cuda.device(0))
-    model_part2 = SecondPipelineStage(PIPELINE_HIDDEN_DIM, PIPELINE_TOTAL_LAYERS).to(torch.cuda.device(1))
+    model_part1 = FirstPipelineStage(PIPELINE_HIDDEN_DIM, PIPELINE_TOTAL_LAYERS).to("cuda:0")
+    model_part2 = SecondPipelineStage(PIPELINE_HIDDEN_DIM, PIPELINE_TOTAL_LAYERS).to("cuda:1")
 else:
     model_part1 = FirstPipelineStage(PIPELINE_HIDDEN_DIM, PIPELINE_TOTAL_LAYERS)
     model_part2 = SecondPipelineStage(PIPELINE_HIDDEN_DIM, PIPELINE_TOTAL_LAYERS)
+
 # IMPORTANT: The optimizer must track parameters from BOTH parts
 optimizer = optim.Adam(
     list(model_part1.parameters()) + list(model_part2.parameters()), 
@@ -59,8 +74,8 @@ optimizer = optim.Adam(
 
 # Generate one fixed batch to overfit
 if cuda:
-    fixed_input = torch.randn(PIPELINE_BATCH_SIZE, PIPELINE_HIDDEN_DIM).to(torch.cuda.device(0))
-    fixed_target = torch.randint(0, 2, (PIPELINE_BATCH_SIZE,)).to(torch.cuda.device(1))
+    fixed_input = torch.randn(PIPELINE_BATCH_SIZE, PIPELINE_HIDDEN_DIM).to("cuda:0")
+    fixed_target = torch.randint(0, 2, (PIPELINE_BATCH_SIZE,)).to("cuda:1")
 else:
     fixed_input = torch.randn(PIPELINE_BATCH_SIZE, PIPELINE_HIDDEN_DIM)
     fixed_target = torch.randint(0, 2, (PIPELINE_BATCH_SIZE,))
@@ -69,6 +84,9 @@ print('--- Training MLP (Simulated Pipeline) ---')
 start_time = time.time()
 model_part1.train()
 model_part2.train()
+
+loss = torch.tensor(0.0)
+
 for step in range(PIPELINE_STEPS):
     optimizer.zero_grad()
     # Simple forward and backward
@@ -76,7 +94,7 @@ for step in range(PIPELINE_STEPS):
     # In PP, we'd send 'hidden' to the next GPU here.
     # We must ensure 'hidden' is ready to receive gradients later.
     if cuda:
-        hidden = hidden.to(torch.cuda.device(1))
+        hidden = hidden.to("cuda:1")
     # retain_grad() for inspection: in PP,
     # this is what we'd send backward.
     # Without it, hidden.grad would be None.
@@ -114,7 +132,7 @@ print(f"Final Loss: {loss.item():.6f} Time: {duration:.3f}s")
 # Step 20 | Loss: 0.268519
 # Step 25 | Loss: 0.240126
 # Step 30 | Loss: 0.215348
-# Step 35 | Loss: 0.218474
-# Step 40 | Loss: 0.202449
-# Step 45 | Loss: 0.166487
-# Final Loss: 0.091202 Time: 0.363s
+# Step 35 | Loss: 0.218472
+# Step 40 | Loss: 0.202444
+# Step 45 | Loss: 0.166476
+# Final Loss: 0.091360 Time: 0.403s

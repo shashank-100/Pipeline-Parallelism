@@ -37,6 +37,8 @@ optimizer = optim.Adam(model.parameters(), lr=0.001)
 fixed_input = torch.randn(SEQUENTIAL_BATCH_SIZE, SEQUENTIAL_HIDDEN_DIM)
 fixed_target = torch.randint(0, 2, (SEQUENTIAL_BATCH_SIZE,)) # low -> inclusive, high -> exclusive
 
+loss = torch.tensor(0.0)
+
 print('--- Training MLP (Ground Truth) ---')
 start_time = time.time()
 model.train()
