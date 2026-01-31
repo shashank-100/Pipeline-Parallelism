@@ -9,22 +9,42 @@ def init_distributed():
     Initializes the distributed process group.
     Reads state directly from environment variables set by torchrun.
     """
+   
     # 1. Read Environment Variables (set by torchrun)
     rank = int(os.environ["RANK"])
     world_size = int(os.environ["WORLD_SIZE"])
     local_rank = int(os.environ["LOCAL_RANK"])
-    
-    device = torch.device(
-        f"cuda:{local_rank}" if torch.cuda.is_available() else "cpu"
-    )
-    
-    # 2. Initialize Group
+
     # NCCL (NVIDIA Collective Communications Library) is optimized for NVIDIA GPUs
     # Gloo (Meta Communication Library) is a collective 
     # communications library that supports both CPU and GPU
-    dist.init_process_group('nccl' if torch.cuda.is_available() else 'gloo',
-                            rank=rank,
-                            world_size=world_size)
+    
+    if torch.cuda.is_available() and torch.cuda.device_count() >= world_size:
+        backend = 'nccl'
+    else:
+        backend = 'gloo'
+    
+    if backend == 'nccl':
+        # Returned the device from init_distributed(), but never calles:
+        # torch.cuda.set_device(local_rank) -> this was missing
+        # Because of that, PyTorch thinks rank1 is still on device 0.
+        # Then any CUDA allocation using the default device becomes wrong, producing:
+        # CUDA error: invalid device ordinal
+
+        # Set cuda device
+        # torch.cuda.set_device(local_rank)
+
+        torch.cuda.set_device(local_rank)
+        device = torch.device(f"cuda:{local_rank}")
+    else:  # backend == 'gloo'
+        device = torch.device('cpu')
+    
+    # 2. Initialize Group
+    dist.init_process_group(
+        backend=backend,
+        rank=rank,
+        world_size=world_size
+    )
 
     return rank, world_size, device
 
@@ -33,8 +53,8 @@ class PipelineCommunication:
     def __init__(self, rank: int, world_size: int):
         self.rank = rank
         self.world_size = world_size
-        self.prev_rank = self.rank - 1 if self.rank != 0 else None 
-        self.next_rank = self.rank + 1 if self.rank != self.world_size else None
+        self.prev_rank = self.rank - 1 if self.rank > 0 else None 
+        self.next_rank = self.rank + 1 if self.rank < self.world_size - 1 else None
 
     def send_forward(self, tensor: torch.Tensor) -> None:
         """Send activation to the next GPU."""
