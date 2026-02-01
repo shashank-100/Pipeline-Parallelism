@@ -37,7 +37,7 @@ optimizer = optim.Adam(model.parameters(), lr=0.001)
 fixed_input = torch.randn(SEQUENTIAL_BATCH_SIZE, SEQUENTIAL_HIDDEN_DIM)
 fixed_target = torch.randint(0, 2, (SEQUENTIAL_BATCH_SIZE,)) # low -> inclusive, high -> exclusive
 
-loss = torch.tensor(0.0)
+loss = None
 
 print('--- Training MLP (Ground Truth) ---')
 start_time = time.time()
@@ -52,7 +52,9 @@ for step in range(SEQUENTIAL_STEPS):
         print(f"Step {step} | Loss: {loss:.4f}")
 
 duration = time.time() - start_time
-print(f"Final Loss: {loss.item():.6f} Time: {duration:.3f}s")
+
+if loss is not None:
+    print(f"Final Loss: {loss.item():.6f} Time: {duration:.3f}s")
 
 # First Training Output (in case you dont have a GPU to compare)
 # --- Training MLP (Ground Truth) ---

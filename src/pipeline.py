@@ -85,7 +85,7 @@ start_time = time.time()
 model_part1.train()
 model_part2.train()
 
-loss = torch.tensor(0.0)
+loss = None
 
 for step in range(PIPELINE_STEPS):
     optimizer.zero_grad()
@@ -108,7 +108,9 @@ for step in range(PIPELINE_STEPS):
         print(f"Step {step:02d} | Loss: {loss.item():.6f}")
 
 duration = time.time() - start_time
-print(f"Final Loss: {loss.item():.6f} Time: {duration:.3f}s")
+
+if loss is not None:
+    print(f"Final Loss: {loss.item():.6f} Time: {duration:.3f}s")
 
 # First Training Output (in case you dont have a GPU to compare)
 # --- Training MLP (Simulated Pipeline) ---
